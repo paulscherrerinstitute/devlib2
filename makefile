@@ -19,6 +19,9 @@ SOURCES += vmeApp/iocreg.c
 SOURCES += vmeApp/vmesh.c
 SOURCES += vmeApp/devlib_compat.c
 
+HEADERS += devLibPCI.h
+HEADERS += devLibPCIImpl.h
+
 ifneq ($(findstring $(EPICS_MODIFICATION),1 2 3 4 5 6 7 8 9),)
 SOURCES += vmeApp/devLibVME.c
 SOURCES_vxWorks += vmeApp/os/vxWorks/devLibVMEOSD.c
