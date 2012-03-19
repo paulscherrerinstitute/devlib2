@@ -19,8 +19,12 @@ SOURCES += vmeApp/iocreg.c
 SOURCES += vmeApp/vmesh.c
 SOURCES += vmeApp/devlib_compat.c
 
+HEADERS += devcsr.h
+HEADERS += vmedefs.h
 HEADERS += devLibPCI.h
 HEADERS += devLibPCIImpl.h
+HEADERS += epicsMMIO.h
+HEADERS += epicsMMIODef.h
 
 ifneq ($(findstring $(EPICS_MODIFICATION),1 2 3 4 5 6 7 8 9),)
 SOURCES += vmeApp/devLibVME.c
