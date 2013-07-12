@@ -159,7 +159,9 @@ vallocPrintf(const char *format, va_list args)
      *
      * Luckily, C99 provides va_copy.
      */
-    va_copy(nargs, args);
+		
+		/* dmm: fix to let devLib2 compile with gcc 2.96 and epics 3.14.8 */
+    __va_copy(nargs, args);
 
     /* Take advantage of the fact that sprintf will tell us how much space to allocate */
     size=vsnprintf("",0,format,nargs);
