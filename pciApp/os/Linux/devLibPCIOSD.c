@@ -150,11 +150,22 @@ static
 char*
 vallocPrintf(const char *format, va_list args)
 {
+    va_list nargs;
     char* ret=NULL;
     int size, size2;
 
+    /* May use a va_list only *once* (on some implementations it may
+     * be a reference to something that holds internal state information
+     *
+     * Luckily, C99 provides va_copy.
+     */
+    va_copy(nargs, args);
+
     /* Take advantage of the fact that sprintf will tell us how much space to allocate */
-    size=vsnprintf("",0,format,args);
+    size=vsnprintf("",0,format,nargs);
+
+    va_end(nargs);
+
     if (size<=0) {
         errlogPrintf("vaprintf: Failed to convert format '%s'\n",format);
         goto fail;
@@ -679,6 +690,7 @@ linuxDevPCIToLocalAddr(
   unsigned int opt
 )
 {
+    int mapno,i;
     osdPCIDevice *osd=CONTAINER((epicsPCIDevice*)dev,osdPCIDevice,dev);
 
     if(epicsMutexLock(osd->devLock)!=epicsMutexLockOK)
@@ -690,9 +702,29 @@ linuxDevPCIToLocalAddr(
     }
 
     if (!osd->base[bar]) {
+
+        if ( osd->dev.bar[bar].ioport ) {
+            errlogPrintf("Failed to MMAP BAR %u of %u:%u.%u -- mapping of IOPORTS is not possible\n", bar,
+                         osd->dev.bus, osd->dev.device, osd->dev.function);
+            return S_dev_addrMapFail;
+        }
+
+        if (opt&DEVLIB_MAP_UIOCOMPACT) {
+            /* mmap requires the number of *mappings* times pagesize;
+             * valid mappings are only PCI memory regions.
+             * Let's count them here
+             */
+            for ( i=0, mapno=bar; i<=bar; i++ ) {
+                if ( osd->dev.bar[i].ioport ) {
+                    mapno--;
+                }
+            }
+        } else
+            mapno=bar;
+
         osd->base[bar] = mmap(NULL, osd->offset[bar]+osd->len[bar],
                               PROT_READ|PROT_WRITE, MAP_SHARED,
-                              osd->fd, bar*pagesize);
+                              osd->fd, mapno*pagesize);
         if (osd->base[bar]==MAP_FAILED) {
             perror("Failed to map BAR");
             errlogPrintf("Failed to MMAP BAR %u of %u:%u.%u\n", bar,
@@ -757,8 +789,7 @@ int linuxDevPCIConnectInterrupt(
         if (other->fptr==isr->fptr && other->param==isr->param) {
             epicsMutexUnlock(osd->devLock);
             errlogPrintf("ISR already registered\n");
-            free(isr);
-            return S_dev_vecInstlFail;
+            goto error;
         }
     }
 
@@ -770,22 +801,24 @@ int linuxDevPCIConnectInterrupt(
      */
     isr->waiter = epicsThreadCreate(name,
                                     epicsThreadPriorityMax-1,
-                                    epicsThreadStackMedium,
+                                    epicsThreadGetStackSize(epicsThreadStackMedium),
                                     isrThread,
                                     isr
                                     );
     if (!isr->waiter) {
         epicsMutexUnlock(osd->devLock);
         errlogPrintf("Failed to create ISR thread %s\n", name);
-
-        free(isr);
-        return S_dev_vecInstlFail;
+        goto error;
     }
 
     ellAdd(&osd->isrs,&isr->node);
     epicsMutexUnlock(osd->devLock);
 
     return 0;
+error:
+    epicsEventDestroy(isr->done);
+    free(isr);
+    return S_dev_vecInstlFail;
 }
 
 static

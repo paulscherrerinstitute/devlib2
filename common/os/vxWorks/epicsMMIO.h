@@ -29,9 +29,21 @@
 
 #include  <vxWorks.h>                           /* vxWorks common definitions                     */
 #include  <sysLib.h>                            /* vxWorks System Library Definitions             */
+#include  <version.h>                           /* vxWorks Version Definitions                    */
 
 #include  <epicsTypes.h>                        /* EPICS Common Type Definitions                  */
 #include  <epicsEndian.h>                       /* EPICS Byte Order Definitions                   */
+
+/*=====================
+ * vxAtomicLib.h (which defines the memory barrier macros)
+ * is available on vxWorks 6.6 and above.
+ */
+
+#if _WRS_VXWORKS_MAJOR > 6
+#  include  <vxAtomicLib.h>
+#elif _WRS_VXWORKS_MAJOR == 6 && _WRS_VXWORKS_MINOR >= 6
+#  include  <vxAtomicLib.h>
+#endif
 
 /**************************************************************************************************/
 /*  Function Prototypes for Routines Not Defined in sysLib.h                                      */
@@ -97,6 +109,16 @@ void        sysOut32   (volatile void*, epicsUInt32);    /* Synchronous 32 bit w
 
 #define le_iowrite16(address,data) sysOut16    ((address), le16_to_cpu((epicsUInt16)(data)))
 #define le_iowrite32(address,data) sysOut32    ((address), le32_to_cpu((epicsUInt32)(data)))
+
+#ifndef VX_MEM_BARRIER_R
+#  define VX_MEM_BARRIER_R() do{}while(0)
+#endif
+#ifndef VX_MEM_BARRIER_W
+#  define VX_MEM_BARRIER_W() do{}while(0)
+#endif
+#ifndef VX_MEM_BARRIER_RW
+#  define VX_MEM_BARRIER_RW() do{}while(0)
+#endif
 
 #define rbarr()  VX_MEM_BARRIER_R()
 #define wbarr()  VX_MEM_BARRIER_W()
