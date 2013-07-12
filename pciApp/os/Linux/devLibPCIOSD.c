@@ -161,7 +161,10 @@ vallocPrintf(const char *format, va_list args)
      */
 		
 		/* dmm: fix to let devLib2 compile with gcc 2.96 and epics 3.14.8 */
-    __va_copy(nargs, args);
+		#ifndef va_copy
+			#define va_copy __va_copy
+		#endif
+    va_copy(nargs, args);
 
     /* Take advantage of the fact that sprintf will tell us how much space to allocate */
     size=vsnprintf("",0,format,nargs);
