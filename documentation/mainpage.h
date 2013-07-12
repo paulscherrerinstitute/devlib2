@@ -78,6 +78,23 @@ the width and order of accesses.
 
 @section changelog Changelog
 
+@subsection ver24 2.4 (Oct. 2012)
+
+@li Remove C++ style comments from epicsMMIODef.h and devcsr.h
+@li Fix Issue preventing Custom PCI bus implementation. (Found by Dan Eichel)
+@li Linux "ISR" thread stack size not correct (Fixed by Till Straumann)
+@li Linux: Previous versions expected Linux kernel modules to leave gaps for un-mappable PCI BARs (I/O Ports).
+    However, most existing kernel modules don't do this.  Add a flag to devPCIToLocalAddr() to specify
+    how a device's kernel module does mapping.  The default is to map as in previous versions.
+    (New behavior by Till Straumann)
+    See documentation of devPCIToLocalAddr().
+
+@subsection ver23 2.3 (Apr. 2012)
+
+@li Include proper headers to enable memory barriers for vxWorks >= 6.6
+@li Fallback to noop when vxWorks memory barriers are not available
+@li Fix incorrect return code when connecting pci interrupts on vxWorks
+
 @subsection ver22 2.2 (Sept. 2011)
 
 @li linux: follow changes to /sys (needed for kernel >2.6.26)
@@ -100,6 +117,7 @@ the width and order of accesses.
 @li Initial release.
 
 @author Michael Davidsaver <mdavidsaver@bnl.gov>
+@author Till Straumann <strauman@slac.stanford.edu>
 
 */
 
