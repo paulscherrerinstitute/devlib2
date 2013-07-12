@@ -59,8 +59,8 @@ int vxworksDevPCIDisconnectInterrupt(
   int status;
   struct osdPCIDevice *osd=pcidev2osd(dev);
 
-#ifdef VXWORKS_PCI_OLD
 
+#if _WRS_VXWORKS_MAJOR < 6
   status=pciIntDisconnect((void*)INUM_TO_IVEC(VXPCIINTOFFSET + osd->dev.irq),
                        pFunction);
 
