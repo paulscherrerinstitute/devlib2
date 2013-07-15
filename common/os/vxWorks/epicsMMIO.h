@@ -18,6 +18,10 @@
 #ifndef EPICSMMIO_H
 #define EPICSMMIO_H
 
+#ifndef vxWorks
+#include "epicsMMIODef.h"
+#else
+
 /**************************************************************************************************/
 /*  Required Header Files                                                                         */
 /**************************************************************************************************/
@@ -123,5 +127,7 @@ void        sysOut32   (volatile void*, epicsUInt32);    /* Synchronous 32 bit w
 #define rbarr()  VX_MEM_BARRIER_R()
 #define wbarr()  VX_MEM_BARRIER_W()
 #define rwbarr() VX_MEM_BARRIER_RW()
+
+#endif /* vxWorks */
 
 #endif /* EPICSMMIO_H */
