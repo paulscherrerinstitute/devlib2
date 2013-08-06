@@ -9,6 +9,7 @@
 #include <iv.h>
 #include <drv/pci/pciIntLib.h>
 #include <vxLib.h>
+#include <sysSymTbl.h>
 
 #include <dbDefs.h>
 
@@ -29,6 +30,14 @@
 
 #endif
 
+/*
+   We cannot be sure that the BSP supports pci at all.
+   To avoid load errors, we need to link dynamically.
+*/
+
+static STATUS (*pciIntConnectFunction)(VOIDFUNCPTR * vector, VOIDFUNCPTR routine, int parameter) = NULL;
+static STATUS (*pciIntDisconnectFunction)(VOIDFUNCPTR * vector, VOIDFUNCPTR routine, int parameter) = NULL;
+
 static
 int vxworksDevPCIConnectInterrupt(
   const epicsPCIDevice *dev,
@@ -39,14 +48,14 @@ int vxworksDevPCIConnectInterrupt(
 {
   int status;
   struct osdPCIDevice *osd=pcidev2osd(dev);
-
-  status=pciIntConnect((void*)INUM_TO_IVEC(VXPCIINTOFFSET + osd->dev.irq),
+  
+  if (pciIntConnectFunction)
+  {
+    status=pciIntConnectFunction((void*)INUM_TO_IVEC(VXPCIINTOFFSET + osd->dev.irq),
                        pFunction, (int)parameter);
-
-  if(status)
-    return S_dev_vecInstlFail;
-
-  return 0;
+    if (status == 0) return 0;
+  }
+  return S_dev_vecInstlFail;
 }
 
 static
@@ -59,22 +68,13 @@ int vxworksDevPCIDisconnectInterrupt(
   int status;
   struct osdPCIDevice *osd=pcidev2osd(dev);
 
-
-#if _WRS_VXWORKS_MAJOR < 6
-  status=pciIntDisconnect((void*)INUM_TO_IVEC(VXPCIINTOFFSET + osd->dev.irq),
-                       pFunction);
-
-#else
-
-  status=pciIntDisconnect2((void*)INUM_TO_IVEC(VXPCIINTOFFSET + osd->dev.irq),
+  if (pciIntDisconnectFunction)
+  {
+    status=pciIntDisconnectFunction((void*)INUM_TO_IVEC(VXPCIINTOFFSET + osd->dev.irq),
                        pFunction, (int)parameter);
-
-#endif
-
-  if(status)
-    return S_dev_intDisconnect;
-
-  return 0;
+    if (status == 0) return 0;
+  }
+  return S_dev_intDisconnect;
 }
 
 static
@@ -125,6 +125,12 @@ devLibPCI pvxworksPCI = {
 
 void devLibPCIRegisterBaseDefault(void)
 {
+    SYM_TYPE t;
+    
+    symFindByNameAndType(sysSymTbl, "pciIntConnect", (char**)&pciIntConnectFunction, &t, SYM_TEXT, SYM_MASK_ALL);
+    symFindByNameAndType(sysSymTbl, "pciIntDisconnect", (char**)&pciIntDisconnectFunction, &t, SYM_TEXT, SYM_MASK_ALL);
+    symFindByNameAndType(sysSymTbl, "pciIntDisconnect2", (char**)&pciIntDisconnectFunction, &t, SYM_TEXT, SYM_MASK_ALL);
+
     devLibPCIRegisterDriver(&pvxworksPCI);
 }
 epicsExportRegistrar(devLibPCIRegisterBaseDefault);
