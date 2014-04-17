@@ -25,6 +25,7 @@
  /* nothing needed */
 #else
 #  define NEED_IFACE
+#  define NEED_PIMPL
 #endif
 
 #ifdef NEED_IFACE
