@@ -30,6 +30,7 @@ ifneq ($(findstring $(EPICS_MODIFICATION),1 2 3 4 5 6 7 8 9),)
 SOURCES += vmeApp/devLibVME.c
 SOURCES_vxWorks += vmeApp/os/vxWorks/devLibVMEOSD.c
 SOURCES_Linux += vmeApp/os/default/devLibVMEOSD.c
+SOURCES_Linux += vmeApp/devlib_dummy.c
 HEADERS += devLibVME.h
 endif
 
