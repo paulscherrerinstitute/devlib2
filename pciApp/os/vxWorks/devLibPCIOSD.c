@@ -103,12 +103,10 @@ int vxworksPCIToLocalAddr(const epicsPCIDevice* dev,
 #endif
 
   if(space) {
-    if(sysBusToLocalAdrs(space, (char*)pci, (char**)loc))
-      return -1;
-  } else {
-    *loc=pci;
+    if(sysBusToLocalAdrs(space, (char*)pci, (char**)loc) == OK)
+      return 0;
   }
-
+  *loc=pci;
   return 0;
 }
 
@@ -127,9 +125,9 @@ void devLibPCIRegisterBaseDefault(void)
 {
     SYM_TYPE t;
     
-    symFindByNameAndType(sysSymTbl, "pciIntConnect", (char**)&pciIntConnectFunction, &t, SYM_TEXT, SYM_MASK_ALL);
-    symFindByNameAndType(sysSymTbl, "pciIntDisconnect", (char**)&pciIntDisconnectFunction, &t, SYM_TEXT, SYM_MASK_ALL);
-    symFindByNameAndType(sysSymTbl, "pciIntDisconnect2", (char**)&pciIntDisconnectFunction, &t, SYM_TEXT, SYM_MASK_ALL);
+    symFindByNameAndType(sysSymTbl, "pciIntConnect", (char**)&pciIntConnectFunction, &t, SYM_TEXT|SYM_GLOBAL, SYM_MASK_ALL);
+    symFindByNameAndType(sysSymTbl, "pciIntDisconnect", (char**)&pciIntDisconnectFunction, &t, SYM_TEXT|SYM_GLOBAL, SYM_MASK_ALL);
+    symFindByNameAndType(sysSymTbl, "pciIntDisconnect2", (char**)&pciIntDisconnectFunction, &t, SYM_TEXT|SYM_GLOBAL, SYM_MASK_ALL);
 
     devLibPCIRegisterDriver(&pvxworksPCI);
 }
