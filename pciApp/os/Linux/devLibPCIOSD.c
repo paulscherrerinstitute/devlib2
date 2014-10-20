@@ -159,11 +159,6 @@ vallocPrintf(const char *format, va_list args)
      *
      * Luckily, C99 provides va_copy.
      */
-		
-		/* dmm: fix to let devLib2 compile with gcc 2.96 and epics 3.14.8 */
-		#ifndef va_copy
-			#define va_copy __va_copy
-		#endif
     va_copy(nargs, args);
 
     /* Take advantage of the fact that sprintf will tell us how much space to allocate */
@@ -180,7 +175,7 @@ vallocPrintf(const char *format, va_list args)
         errlogPrintf("vaprintf: Failed to allocate memory for format '%s'\n",format);
         goto fail;
     }
-    size2=vsprintf(ret,format,args);
+    size2=vsnprintf(ret,size+1,format,args);
     if (size!=size2) {
         errlogPrintf("vaprintf: Format yielded different size %d %d : %s\n",size,size2,format);
         goto fail;
@@ -229,12 +224,12 @@ vread_sysfs_hex(int *err, const char *fileformat, va_list args)
 
     fd=fopen(scratch, "r");
     if (!fd) {
-        errlogPrintf("vread_sysfs_hex: Failed to open %s\n",scratch);
+        errlogPrintf("vread_sysfs_hex: Failed to open %s\n",fileformat);
         goto done;
     }
     size=fscanf(fd, "0x%8lx",&ret);
     if(size!=1 || ferror(fd)) {
-        errlogPrintf("vread_sysfs_hex: Failed to read %s\n",scratch);
+        errlogPrintf("vread_sysfs_hex: Failed to read %s\n",fileformat);
         goto done;
     }
 
