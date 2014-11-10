@@ -335,26 +335,38 @@ devPCIShow(int lvl, int vendor, int device, int exact)
 void
 devPCIShowDevice(int lvl, const epicsPCIDevice *dev)
 {
-    int i;
-    errlogFlush();
-    errlogPrintf("PCI %u:%u.%u IRQ %u\n"
+    int bar;
+/*    errlogFlush();   SLOW!! */
+    errlogPrintf("PCI %04x:%02x:%02x.%x IRQ %u\n"
            "  vendor:device %04x:%04x\n",
-           dev->bus, dev->device, dev->function, dev->irq,
+           (dev->bus>>16)&0xffff, dev->bus&0xffff, dev->device, dev->function, dev->irq,
            dev->id.vendor, dev->id.device);
-    if(lvl>=1)
+    if(lvl<1) return;
         errlogPrintf("  subved:subdev %04x:%04x\n"
                "  class %06x rev %02x\n",
                dev->id.sub_vendor, dev->id.sub_device,
                dev->id.pci_class, dev->id.revision
                );
-    if(lvl<2)
-        return;
-    for(i=0; i<PCIBARCOUNT; i++)
+    if(lvl<2) return;
+    for(bar=0; bar<PCIBARCOUNT; bar++)
     {
-        errlogPrintf("BAR %u %s-bit %s%s\n",i,
-               dev->bar[i].addr64?"64":"32",
-               dev->bar[i].ioport?"IO Port":"MMIO",
-               dev->bar[i].below1M?" Below 1M":"");
+        unsigned int len, i;
+        volatile void *data;
+        
+        devPCIBarLen(dev, bar, &len);
+        if (!len) continue;
+        errlogPrintf(" BAR %u %s-bit %-7s size=%#x %s\n",bar,
+               dev->bar[bar].addr64?"64":"32",
+               dev->bar[bar].ioport?"IO Port":"MMIO",len,
+               dev->bar[bar].below1M?"Below 1M":"");
+        if(lvl<3) continue;
+        if (devPCIToLocalAddr(dev, bar, &data, 0) != 0) continue;
+        for (i=0; i < 64 && (len<<2); i++)
+        {
+            printf (" %08x", ((volatile epicsUInt32*)data)[i]);
+            if ((i & 7)==7) printf ("\n");
+        }
+        if ((i & 7)!=0) printf ("\n");
     }
 }
 

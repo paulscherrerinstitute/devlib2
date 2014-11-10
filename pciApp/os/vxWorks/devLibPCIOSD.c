@@ -168,6 +168,7 @@ int vxworksDevPCIConnectInterrupt(
     if(status)
         return S_dev_vecInstlFail;
 
+    intEnable(VXPCIINTOFFSET+irq);
     return 0;
 }
 
