@@ -6,7 +6,7 @@
 * EPICS BASE is distributed subject to a Software License Agreement found
 * in file LICENSE that is included with this distribution. 
 \*************************************************************************/
-/* $Id: devLibVMEOSD.c,v 1.1 2012/03/19 12:56:23 zimoch Exp $ */
+/* $Id: devLibVMEOSD.c,v 1.2 2014/11/24 09:44:59 zimoch Exp $ */
 
 /*      RTEMS port by Till Straumann, <strauman@slac.stanford.edu>
  *            3/2002

@@ -6,7 +6,7 @@
 * in file LICENSE that is included with this distribution.
 \*************************************************************************/
 
-/* $Id: devLibVMEOSD.c,v 1.1 2012/03/19 12:56:23 zimoch Exp $
+/* $Id: devLibVMEOSD.c,v 1.2 2014/11/24 09:44:59 zimoch Exp $
  * This is a copy of the similarly named file from EPICS Base
  */
 

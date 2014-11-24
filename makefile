@@ -9,6 +9,7 @@ USR_CFLAGS += -I ../common/os/default
 USR_CFLAGS += -I ../pciApp/os/$(OS_CLASS)
 
 SOURCES += pciApp/devLibPCI.c
+SOURCES += pciApp/devLibPCIStrings.c
 SOURCES += pciApp/pcish.c
 SOURCES_vxWorks += pciApp/osdPciShared.c
 SOURCES_vxWorks += pciApp/os/vxWorks/devLibPCIOSD.c

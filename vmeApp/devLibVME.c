@@ -9,7 +9,7 @@
 * in file LICENSE that is included with this distribution. 
 \*************************************************************************/
 /* devLib.c - support for allocation of common device resources */
-/* $Id: devLibVME.c,v 1.1 2012/03/19 12:56:23 zimoch Exp $ */
+/* $Id: devLibVME.c,v 1.2 2014/11/24 09:44:59 zimoch Exp $ */
 
 /*
  *  Original Author: Marty Kraimer
@@ -22,7 +22,7 @@
  * This is a stripped down version of the similarly named file from EPICS Base
  */
 
-static const char sccsID[] = "@(#) $Id: devLibVME.c,v 1.1 2012/03/19 12:56:23 zimoch Exp $";
+static const char sccsID[] = "@(#) $Id: devLibVME.c,v 1.2 2014/11/24 09:44:59 zimoch Exp $";
 
 #include <string.h>
 #include <stdio.h>

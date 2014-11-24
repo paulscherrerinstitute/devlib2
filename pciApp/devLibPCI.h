@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 #define DEVLIBPCI_MAJOR 1 /**< @brief API major version */
-#define DEVLIBPCI_MINOR 0 /**< @brief API minor version */
+#define DEVLIBPCI_MINOR 2 /**< @brief API minor version */
 
 /** @brief PCI device identifier
  *
@@ -109,6 +109,8 @@ typedef struct {
   unsigned int function;
   struct PCIBar bar[6];
   epicsUInt8 irq;
+  unsigned int domain;
+  const char* driver;
 } epicsPCIDevice;
 
 /** @brief The maximum number of base address registers (BARs). */
@@ -158,6 +160,7 @@ int devPCIFindCB(
  * S_dev_noDevice.
  *
  @param idlist List of PCI identifiers
+ @param domain domain
  @param b bus
  @param d device
  @param f function
@@ -165,6 +168,17 @@ int devPCIFindCB(
  @param opt Modifiers.  Currently unused
  @returns 0 on success or an EPICS error code on failure.
  */
+epicsShareFunc
+int devPCIFindDBDF(
+     const epicsPCIID *idlist,
+     unsigned int      domain,
+     unsigned int      b,
+     unsigned int      d,
+     unsigned int      f,
+const epicsPCIDevice **found,
+     unsigned int opt /* always 0 */
+);
+
 epicsShareFunc
 int devPCIFindBDF(
      const epicsPCIID *idlist,
@@ -299,6 +313,104 @@ epicsShareFunc
 const char* devLibPCIDriverName();
 
 extern int devPCIDebug;
+
+/** @brief Read byte from configuration space
+ *
+ @param   dev     A PCI device handle
+ @param   offset  Offset into configuration space
+ @param   pResult Pointer to where result is to be written
+ @returns 0       on success or an EPICS error code on failure
+ */
+
+epicsShareFunc
+int devPCIConfigRead8(const epicsPCIDevice *dev, unsigned offset, epicsUInt8 *pResult);
+
+/** @brief Read (16-bit) word from configuration space
+ *
+ @param   dev     A PCI device handle
+ @param   offset  Offset into configuration space (must be 16-bit aligned)
+ @param   pResult Pointer to where result is to be written
+ @returns 0       on success or an EPICS error code on failure
+ */
+
+
+epicsShareFunc
+int devPCIConfigRead16(const epicsPCIDevice *dev, unsigned offset, epicsUInt16 *pResult);
+
+/** @brief Read (32-bit) dword from configuration space
+ *
+ @param   dev     A PCI device handle
+ @param   offset  Offset into configuration space (must be 32-bit aligned)
+ @param   pResult Pointer to where result is to be written
+ @returns 0       on success or an EPICS error code on failure
+ */
+
+epicsShareFunc
+int devPCIConfigRead32(const epicsPCIDevice *dev, unsigned offset, epicsUInt32 *pResult);
+
+/** @brief Write byte to configuration space
+ *
+ @param   dev     A PCI device handle
+ @param   offset  Offset into configuration space
+ @param   value   Value to be written
+ @returns 0       on success or an EPICS error code on failure
+ */
+
+epicsShareFunc
+int devPCIConfigWrite8(const epicsPCIDevice *dev, unsigned offset, epicsUInt8 value);
+
+/** @brief Write (16-bit) word from configuration space
+ *
+ @param   dev     A PCI device handle
+ @param   offset  Offset into configuration space (must be 16-bit aligned)
+ @param   value   Value to be written
+ @returns 0       on success or an EPICS error code on failure
+ */
+
+
+epicsShareFunc
+int devPCIConfigWrite16(const epicsPCIDevice *dev, unsigned offset, epicsUInt16 value);
+
+/** @brief Write (32-bit) dword from configuration space
+ *
+ @param   dev     A PCI device handle
+ @param   offset  Offset into configuration space (must be 32-bit aligned)
+ @param   value   Value to be written
+ @returns 0       on success or an EPICS error code on failure
+ */
+
+epicsShareFunc
+int devPCIConfigWrite32(const epicsPCIDevice *dev, unsigned offset, epicsUInt32 value);
+
+/** @brief Enable interrupts at the device.
+ *
+ @param   dev     A PCI device handle
+ @returns 0       on success or an EPICS error code on failure
+
+ @note            Implementation of this call for any OS is optional
+ */
+epicsShareFunc
+int devPCIEnableInterrupt(const epicsPCIDevice *dev);
+
+/** @brief Enable interrupts at the device.
+ *
+ @param   dev     A PCI device handle
+ @returns 0       on success or an EPICS error code on failure
+
+ @note            Implementation of this call for any OS is optional
+ */
+
+epicsShareFunc
+int devPCIDisableInterrupt(const epicsPCIDevice *dev);
+
+/** @brief Translate class id to string.
+ *
+ @param   classId    PCI class Id
+ @returns            constant class name string
+ */
+
+epicsShareFunc
+const char* devPCIDeviceClassToString(int classId);
 
 #ifdef __cplusplus
 } /* extern "C" */

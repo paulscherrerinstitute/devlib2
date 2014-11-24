@@ -36,11 +36,11 @@
 
 int devPCIDebug = 0;
 
-static ELLLIST pciDrivers = {{NULL,NULL},0};
+static ELLLIST pciDrivers;
 
-static devLibPCI *pdevLibPCI=NULL;
+static devLibPCI *pdevLibPCI;
 
-static epicsMutexId pciDriversLock = NULL;
+static epicsMutexId pciDriversLock;
 static epicsThreadOnceId devPCIReg_once = EPICS_THREAD_ONCE_INIT;
 
 static epicsThreadOnceId devPCIInit_once = EPICS_THREAD_ONCE_INIT;
@@ -56,20 +56,28 @@ void regInit(void* junk)
 
 epicsShareFunc
 int
-devLibPCIRegisterDriver(devLibPCI* drv)
+devLibPCIRegisterDriver2(devLibPCI* drv, size_t drvsize)
 {
     int ret=0;
     ELLNODE *cur;
-    devLibPCI *other;
 
     if (!drv->name) return 1;
+
+    if(drvsize!=sizeof(*drv)) {
+        errlogPrintf("devLibPCIRegisterDriver() fails with inconsistent PCI OS struct sizes.\n"
+                     "expect %lu but given %lu\n"
+                     "Please do a clean rebuild of devLib2 and any code with custom PCI OS structs\n",
+                     (unsigned long)sizeof(*drv),
+                     (unsigned long)drvsize);
+        return S_dev_internal;
+    }
 
     epicsThreadOnce(&devPCIReg_once, &regInit, NULL);
 
     epicsMutexMustLock(pciDriversLock);
 
     for(cur=ellFirst(&pciDrivers); cur; cur=ellNext(cur)) {
-        other=CONTAINER(cur, devLibPCI, node);
+        devLibPCI *other=CONTAINER(cur, devLibPCI, node);
         if (strcmp(drv->name, other->name)==0) {
             errlogPrintf("Failed to register PCI bus driver: name already taken\n");
             ret=1;
@@ -178,7 +186,7 @@ int devPCIFindCB(
 
 struct bdfmatch
 {
-  unsigned int b,d,f;
+  unsigned int domain,b,d,f;
   const epicsPCIDevice* found;
 };
 
@@ -187,7 +195,9 @@ int bdfsearch(void* ptr, const epicsPCIDevice* cur)
 {
   struct bdfmatch *mt=ptr;
 
-  if( cur->bus==mt->b && cur->device==mt->d &&
+  if( cur->domain==mt->domain &&
+      cur->bus==mt->b &&
+      cur->device==mt->d &&
       cur->function==mt->f )
   {
     mt->found=cur;
@@ -201,8 +211,9 @@ int bdfsearch(void* ptr, const epicsPCIDevice* cur)
  * The most common PCI search using only id fields and BDF.
  */
 epicsShareFunc
-int devPCIFindBDF(
+int devPCIFindDBDF(
      const epicsPCIID *idlist,
+     unsigned int      domain,
      unsigned int      b,
      unsigned int      d,
      unsigned int      f,
@@ -216,6 +227,7 @@ const epicsPCIDevice **found,
   if(!found)
     return 2;
 
+  find.domain=domain;
   find.b=b;
   find.d=d;
   find.f=f;
@@ -236,6 +248,20 @@ const epicsPCIDevice **found,
 
   *found=find.found;
   return 0;
+}
+
+/* for backward compatilility: b=domain*0x100+bus */
+epicsShareFunc
+int devPCIFindBDF(
+     const epicsPCIID *idlist,
+     unsigned int      b,
+     unsigned int      d,
+     unsigned int      f,
+const epicsPCIDevice **found,
+     unsigned int      opt
+)
+{
+    return devPCIFindDBDF(idlist, b>>8, b&0xff, d, f, found, opt);
 }
 
 int
@@ -335,40 +361,118 @@ devPCIShow(int lvl, int vendor, int device, int exact)
 void
 devPCIShowDevice(int lvl, const epicsPCIDevice *dev)
 {
-    int bar;
-/*    errlogFlush();   SLOW!! */
+    int i;
+
     errlogPrintf("PCI %04x:%02x:%02x.%x IRQ %u\n"
-           "  vendor:device %04x:%04x\n",
-           (dev->bus>>16)&0xffff, dev->bus&0xffff, dev->device, dev->function, dev->irq,
-           dev->id.vendor, dev->id.device);
-    if(lvl<1) return;
-        errlogPrintf("  subved:subdev %04x:%04x\n"
-               "  class %06x rev %02x\n",
-               dev->id.sub_vendor, dev->id.sub_device,
-               dev->id.pci_class, dev->id.revision
-               );
-    if(lvl<2) return;
-    for(bar=0; bar<PCIBARCOUNT; bar++)
+           "  vendor:device %04x:%04x rev %02x\n",
+           dev->domain, dev->bus, dev->device, dev->function, dev->irq,
+           dev->id.vendor, dev->id.device, dev->id.revision);
+    if(lvl<1)
+        return;
+    errlogPrintf("  subved:subdev %04x:%04x\n"
+           "  class %06x %s\n",
+           dev->id.sub_vendor, dev->id.sub_device,
+           dev->id.pci_class,
+           devPCIDeviceClassToString(dev->id.pci_class));
+    if (dev->driver) errlogPrintf("  driver %s\n",
+           dev->driver);
+    if(lvl<2)
+        return;
+    for(i=0; i<PCIBARCOUNT; i++)
     {
-        unsigned int len, i;
-        volatile void *data;
-        
-        devPCIBarLen(dev, bar, &len);
-        if (!len) continue;
-        errlogPrintf(" BAR %u %s-bit %-7s size=%#x %s\n",bar,
-               dev->bar[bar].addr64?"64":"32",
-               dev->bar[bar].ioport?"IO Port":"MMIO",len,
-               dev->bar[bar].below1M?"Below 1M":"");
-        if(lvl<3) continue;
-        if (devPCIToLocalAddr(dev, bar, &data, 0) != 0) continue;
-        for (i=0; i < 64 && (len<<2); i++)
+        epicsUInt32 len;
+
+        if ((*pdevLibPCI->pDevPCIBarLen)(dev, i, &len) == 0 && len > 0)
         {
-            printf (" %08x", ((volatile epicsUInt32*)data)[i]);
-            if ((i & 7)==7) printf ("\n");
+            char* u = "";
+            if (len >= 1024) { len >>= 10; u = "k"; }
+            if (len >= 1024) { len >>= 10; u = "M"; }
+            if (len >= 1024) { len >>= 10; u = "G"; }
+
+            errlogPrintf("  BAR %u %s-bit %s%s %3u %sB\n",i,
+                   dev->bar[i].addr64?"64":"32",
+                   dev->bar[i].ioport?"IO Port":"MMIO   ",
+                   dev->bar[i].below1M?" Below 1M":"",
+                   len, u);
         }
-        if ((i & 7)!=0) printf ("\n");
+        /* 64 bit bars use 2 entries */
+        if (dev->bar[i].addr64) i++;
     }
 }
+
+static int
+checkCfgAccess(const epicsPCIDevice *dev, unsigned offset, void *arg, devPCIAccessMode mode)
+{
+    int rval;
+
+    if ( (offset & (CFG_ACC_WIDTH(mode) - 1)) )
+        return S_dev_badArgument; /* misaligned      */
+    if ( ! pdevLibPCI->pDevPCIConfigAccess )
+        return S_dev_badFunction; /* not implemented */
+
+    rval = (*pdevLibPCI->pDevPCIConfigAccess)(dev, offset, arg, mode);
+
+    if ( rval )
+        return rval;
+
+    return 0;
+}
+
+int
+devPCIConfigRead8(const epicsPCIDevice *dev, unsigned offset, epicsUInt8 *pResult)
+{
+    return checkCfgAccess(dev, offset, pResult, RD_08);
+}
+
+int
+devPCIConfigRead16(const epicsPCIDevice *dev, unsigned offset, epicsUInt16 *pResult)
+{
+    return checkCfgAccess(dev, offset, pResult, RD_16);
+}
+
+int 
+devPCIConfigRead32(const epicsPCIDevice *dev, unsigned offset, epicsUInt32 *pResult)
+{
+    return checkCfgAccess(dev, offset, pResult, RD_32);
+}
+
+int
+devPCIConfigWrite8(const epicsPCIDevice *dev, unsigned offset, epicsUInt8 value)
+{
+    return checkCfgAccess(dev, offset, &value, WR_08);
+}
+
+int
+devPCIConfigWrite16(const epicsPCIDevice *dev, unsigned offset, epicsUInt16 value)
+{
+    return checkCfgAccess(dev, offset, &value, WR_16);
+}
+
+int 
+devPCIConfigWrite32(const epicsPCIDevice *dev, unsigned offset, epicsUInt32 value)
+{
+    return checkCfgAccess(dev, offset, &value, WR_32);
+}
+
+
+int
+devPCIEnableInterrupt(const epicsPCIDevice *dev)
+{
+    if ( ! pdevLibPCI->pDevPCIConfigAccess )
+        return S_dev_badFunction; /* not implemented */
+
+    return pdevLibPCI->pDevPCISwitchInterrupt(dev, 0);
+}
+
+int
+devPCIDisableInterrupt(const epicsPCIDevice *dev)
+{
+    if ( ! pdevLibPCI->pDevPCIConfigAccess )
+        return S_dev_badFunction; /* not implemented */
+
+    return pdevLibPCI->pDevPCISwitchInterrupt(dev, 1);
+}
+
 
 static const iocshArg devPCIShowArg0 = { "verbosity level",iocshArgInt};
 static const iocshArg devPCIShowArg1 = { "PCI Vendor ID (0=any)",iocshArgInt};
