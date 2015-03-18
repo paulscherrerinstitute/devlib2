@@ -132,7 +132,7 @@ void pciread(int dmod, int offset, int count)
   count/=dbytes;
   if(count==0) count=1;
 
-  for(i=0, dptr=diagbase+offset; i<count; i++, dptr+=dbytes) {
+  for(i=0, dptr=(volatile char*)diagbase+offset; i<count; i++, dptr+=dbytes) {
       if ((i*dbytes)%16==0)
           printf("\n0x%08x ",i*dbytes);
       else if ((i*dbytes)%4==0)

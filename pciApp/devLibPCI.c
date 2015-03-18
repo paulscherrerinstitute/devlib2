@@ -16,6 +16,7 @@
 #include <epicsThread.h>
 #include <epicsMutex.h>
 #include <iocsh.h>
+#include <epicsExport.h>
 
 #include "devLibPCIImpl.h"
 
